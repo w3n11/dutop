@@ -1,0 +1,1 @@
+gcc -std=c99 -Wall -Wextra -Werror -pedantic -O2 -o dutop dutop.c
