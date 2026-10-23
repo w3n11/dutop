@@ -13,6 +13,7 @@
 // command options
 static int opt_silent = 0;
 static int opt_one_dev = 0;
+static int opt_ignore_dot = 0;
 
 /*
     Either a file or directory record in target directory (CWD or agument-specified).
@@ -316,6 +317,10 @@ int main(int argc, char * argv[]) {
                 bar_width = (int)arg_bar_width + 2; // + 2 for brackets
                 break;
             }
+            case 'i': {
+                opt_ignore_dot = 1; // ignore (hidden) .files/directories
+                break;
+            }
             case 's': {
                 opt_silent = 1; // supress error print
                 break;
@@ -333,6 +338,7 @@ int main(int argc, char * argv[]) {
                 fprintf(stderr, "  -w barwidth  Width of the bar graph excluding [] brackets (default: 32)\n");
                 fprintf(stderr, "  -s           Silent mode (suppress errors)\n");
                 fprintf(stderr, "  -x           Stay on one file system (ignore /proc, /sys, USBs, etc.)\n");
+                fprintf(stderr, "  -i           Ignore hidden files/directories\n");
                 fprintf(stderr, "  -h           Show this help message\n");
                 goto err;
         }
@@ -381,6 +387,7 @@ int main(int argc, char * argv[]) {
 
     rewinddir(dir);
     while ((dirent = readdir(dir))) {
+        if (opt_ignore_dot && dirent->d_name[0] == '.') continue;
         if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) continue;
         if (fstatat(dir_fd, dirent->d_name, &sb, AT_SYMLINK_NOFOLLOW) == -1) continue;
         if (opt_one_dev && sb.st_dev != source_dev) continue;
