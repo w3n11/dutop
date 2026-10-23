@@ -61,15 +61,24 @@ Options:
 
 You can compile and install **dutop** directly from the source code. You will need standard C development tools (like `gcc` or `clang`).
 
-#### 1. Clone and Compile:
+#### 1. Clone:
 
 ```
 git clone https://github.com/w3n11/dutop.git
 cd dutop
-gcc -std=c99 -Wall -Wextra -Werror -pedantic -O2 -o dutop dutop.c
 ```
 
-#### 2. Make it available system-wide
+#### 2. Compile:
+
+```
+gcc -std=c99 -Wall -Wextra -Werror -pedantic -O2 -o dutop dutop.c
+```
+or run:
+```
+./compile.sh
+```
+
+#### 3. Make it available system-wide
 
 ```
 sudo cp dutop /usr/local/bin/
