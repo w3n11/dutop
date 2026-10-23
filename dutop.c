@@ -293,7 +293,7 @@ int main(int argc, char * argv[]) {
     entry * entries = NULL;
 
     int opt;  // love getopt <3
-    while ((opt = getopt(argc, argv, "n:w:sxh")) != -1) {
+    while ((opt = getopt(argc, argv, "n:w:sxih")) != -1) {
         switch (opt) {
             case 'n': {
                 long arg_entries = atol(optarg);
