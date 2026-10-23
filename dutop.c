@@ -10,10 +10,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define VERSION "1.0.0"
+
 // command options
 static int opt_silent = 0;
 static int opt_one_dev = 0;
 static int opt_ignore_dot = 0;
+static int opt_only_files = 0;
+static int opt_only_dirs = 0;
 
 /*
     Either a file or directory record in target directory (CWD or agument-specified).
@@ -293,8 +297,12 @@ int main(int argc, char * argv[]) {
     entry * entries = NULL;
 
     int opt;  // love getopt <3
-    while ((opt = getopt(argc, argv, "n:w:sxih")) != -1) {
+    while ((opt = getopt(argc, argv, "n:w:sxidfhV")) != -1) {
         switch (opt) {
+            case 'V': {
+                printf("dutop version %s\n", VERSION);
+                exit(EXIT_SUCCESS);
+            }
             case 'n': {
                 long arg_entries = atol(optarg);
                 if (arg_entries < 0) {
@@ -329,23 +337,40 @@ int main(int argc, char * argv[]) {
                 opt_one_dev = 1; // limit to current filesystem
                 break;
             }
+            case 'd': {
+                opt_only_dirs = 1; // limit to only directories
+                break;
+            }
+            case 'f': {
+                opt_only_files = 1; // limit to only files
+                break;
+            }
             case 'h':
             case '?':
             default: // help
-                fprintf(stderr, "Usage: %s [-n count] [-w barwidth] [-s] [directory]\n", argv[0]);
+                fprintf(stderr, "Usage: %s [-n count] [-w barwidth] [-isx] [-d | -f] [directory]\n", argv[0]);
                 fprintf(stderr, "Options:\n");
                 fprintf(stderr, "  -n count     Number of entries to show (0 for all, default: 10)\n");
                 fprintf(stderr, "  -w barwidth  Width of the bar graph excluding [] brackets (default: 32)\n");
                 fprintf(stderr, "  -s           Silent mode (suppress errors)\n");
                 fprintf(stderr, "  -x           Stay on one file system (ignore /proc, /sys, USBs, etc.)\n");
                 fprintf(stderr, "  -i           Ignore hidden files/directories\n");
-                fprintf(stderr, "  -h           Show this help message\n");
+                fprintf(stderr, "  -d           Show only directories (exclusive with -f)\n");
+                fprintf(stderr, "  -f           Show only files (exclusive with -d)\n");
+                fprintf(stderr, "  -V           Show version information and exit\n");
+                fprintf(stderr, "  -h           Show this very helpful message\n");
+                fprintf(stderr, "\nDefault directory is current working directory.\n");
                 goto err;
         }
     }
 
     if (optind < argc) { // optional argument path
         target_dir = argv[optind];
+    }
+
+    if (opt_only_dirs && opt_only_files) {
+        print_error("options -d and -f are mutually exclusive");
+        goto err;
     }
 
     if (chdir(target_dir) != 0) { // cwd change
@@ -392,12 +417,12 @@ int main(int argc, char * argv[]) {
         if (fstatat(dir_fd, dirent->d_name, &sb, AT_SYMLINK_NOFOLLOW) == -1) continue;
         if (opt_one_dev && sb.st_dev != source_dev) continue;
         entry curr_entry = { 0 };
-        if (S_ISDIR(sb.st_mode)) {
+        if (S_ISDIR(sb.st_mode) && !opt_only_files) {
             if (get_entry_from_dir(&curr_entry, dirent->d_name, source_dev)) {
                 print_error("failed to traverse directory '%s'\n", dirent->d_name);
                 continue;
             }
-        } else if (S_ISREG(sb.st_mode)) {
+        } else if (S_ISREG(sb.st_mode) && !opt_only_dirs) {
             strcpy(curr_entry.name, dirent->d_name);
             curr_entry.size = sb.st_size;
         }

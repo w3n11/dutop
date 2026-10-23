@@ -42,13 +42,19 @@ $ dutop -sx /
 ## Usage
 
 ```
-Usage: dutop [-n count] [-w barwidth] [-s] [-x] [directory]
+Usage: dutop [-n count] [-w barwidth] [-isx] [-d | -f] [directory]
 Options:
   -n count     Number of entries to show (0 for all, default: 10)
-  -w barwidth  Width of the bar graph excluding [] brackets (default: 34)
-  -s           Silent mode (suppress permission/read errors)
+  -w barwidth  Width of the bar graph excluding [] brackets (default: 32)
+  -s           Silent mode (suppress errors)
   -x           Stay on one file system (ignore /proc, /sys, USBs, etc.)
-  -h           Show this help message
+  -i           Ignore hidden files/directories
+  -d           Show only directories (exclusive with -f)
+  -f           Show only files (exclusive with -d)
+  -V           Show version information and exit
+  -h           Show this very helpful message
+
+Default directory is current working directory.
 ```
 
 ### Examples
