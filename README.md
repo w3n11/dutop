@@ -1,4 +1,4 @@
-# dutop (1.0.1)
+# dutop (1.1.0)
 
 A simple, robust, and visually pleasing UNIX disk usage analyzer. 
 
@@ -42,7 +42,7 @@ $ dutop -sx /
 ## Usage
 
 ```
-Usage: dutop [-n count] [-w barwidth] [-isx] [-d | -f] [directory]
+Usage: ./dutop [-n count] [-w barwidth] [-isxcCVh] [-d | -f] [directory]
 Options:
   -n count     Number of entries to show (0 for all, default: 10)
   -w barwidth  Width of the bar graph excluding [] brackets (default: 32)
@@ -51,6 +51,8 @@ Options:
   -i           Ignore hidden files/directories
   -d           Show only directories (exclusive with -f)
   -f           Show only files (exclusive with -d)
+  -C           Disable color output (monochrome)
+  -c           Force color output (even when piping)
   -V           Show version information and exit
   -h           Show this very helpful message
 

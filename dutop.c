@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define VERSION "1.0.1"
+#define VERSION "1.1.0"
 
 // command options
 static int opt_silent = 0;
@@ -18,6 +18,7 @@ static int opt_one_dev = 0;
 static int opt_ignore_dot = 0;
 static int opt_only_files = 0;
 static int opt_only_dirs = 0;
+static int opt_color = 0;
 
 /*
     Either a file or directory record in target directory (CWD or agument-specified).
@@ -278,7 +279,21 @@ void print_bar(size_t actual_size, size_t max_size, size_t bar_width) {
     bar[bar_width - 1] = ']';
     bar[bar_width] = '\0';
 
-    printf("%s", bar);
+    if (opt_color) {
+        double ratio = 0.0;
+        if (max_size > 0) {
+            ratio = (double)actual_size / max_size;
+        }
+
+        int r = (ratio < 0.5) ? (int)(255 * (ratio * 2.0)) : 255;
+        int g = (ratio > 0.5) ? (int)(255 * ((1.0 - ratio) * 2.0)) : 255;
+        int b = 0;
+
+        printf("[\033[38;2;%d;%d;%dm%.*s\033[0m]", r, g, b, (int)(bar_width - 2), bar + 1);
+    } else {
+        printf("%s", bar);
+    }
+
     free(bar);
 }
 
@@ -312,14 +327,16 @@ void format_size(size_t size, char *buf) {
 int main(int argc, char * argv[]) {
     int retval = EXIT_FAILURE;
     size_t n_entries = 10;
-    int bar_width = 34; // the final bar summary default width (32 + 2 for brackets)
+    int bar_width = 47; // the final bar summary default width (45 + 2 for brackets)
     char * target_dir = "."; // default dir is cwd
     DIR * dir = NULL;
     entry * entries = NULL;
     size_t n_entry = 0; // this has to be defined before the first `goto err`
 
+    opt_color = (isatty(STDOUT_FILENO) && getenv("NO_COLOR") == NULL);
+
     int opt;  // love getopt <3
-    while ((opt = getopt(argc, argv, "n:w:sxidfhV")) != -1) {
+    while ((opt = getopt(argc, argv, "n:w:sxidfcChV")) != -1) {
         switch (opt) {
             case 'V': {
                 printf("dutop version %s\n", VERSION);
@@ -367,10 +384,18 @@ int main(int argc, char * argv[]) {
                 opt_only_files = 1; // limit to only files
                 break;
             }
+            case 'c': {
+                opt_color = 1; // force color mode (last -c | -C wins)
+                break;
+            }
+            case 'C': {
+                opt_color = 0; // force colorless mode (last -c | -C wins)
+                break;
+            }
             case 'h':
             case '?':
             default: // help
-            fprintf(stderr, "Usage: %s [-n count] [-w barwidth] [-isx] [-d | -f] [directory]\n", argv[0]);
+            fprintf(stderr, "Usage: %s [-n count] [-w barwidth] [-isxcCVh] [-d | -f] [directory]\n", argv[0]);
             fprintf(stderr, "Options:\n");
             fprintf(stderr, "  -n count     Number of entries to show (0 for all, default: 10)\n");
             fprintf(stderr, "  -w barwidth  Width of the bar graph excluding [] brackets (default: 32)\n");
@@ -379,6 +404,8 @@ int main(int argc, char * argv[]) {
             fprintf(stderr, "  -i           Ignore hidden files/directories\n");
             fprintf(stderr, "  -d           Show only directories (exclusive with -f)\n");
             fprintf(stderr, "  -f           Show only files (exclusive with -d)\n");
+            fprintf(stderr, "  -C           Disable color output (monochrome)\n");
+            fprintf(stderr, "  -c           Force color output (even when piping)\n");
             fprintf(stderr, "  -V           Show version information and exit\n");
             fprintf(stderr, "  -h           Show this very helpful message\n");
             fprintf(stderr, "\nDefault directory is current working directory.\n");
