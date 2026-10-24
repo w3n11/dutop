@@ -1,4 +1,4 @@
-# dutop (1.0.0)
+# dutop (1.0.1)
 
 A simple, robust, and visually pleasing UNIX disk usage analyzer. 
 
