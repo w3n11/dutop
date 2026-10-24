@@ -27,7 +27,7 @@ static int opt_only_dirs = 0;
     - `size` of the file or combined size of all the files and directories in the dir
 */
 typedef struct {
-    char name[PATH_MAX];
+    char * name;
     size_t size;
 } entry;
 
@@ -157,10 +157,18 @@ int get_entry_from_dir(entry * entry, char * dir_path, dev_t source_dev) {
     paths_stack_t * stack = NULL;
     DIR * dir = NULL;
     entry->size = 0;
-    snprintf(entry->name, PATH_MAX, "%s", dir_path);
-    
+    // snprintf(entry->name, PATH_MAX, "%s", dir_path);
+    entry->name = strdup(dir_path);
+    if (!entry->name) {
+        print_error("memory allocation failed: %s\n", strerror(errno));
+        goto err;
+    }
+
     stack_init(&stack);
-    if (!stack) goto err;
+    if (!stack) {
+
+        goto err;
+    }
     char * initial_path = strdup(dir_path);
     if (!initial_path) goto err;
     push(&stack, initial_path);
@@ -182,7 +190,7 @@ int get_entry_from_dir(entry * entry, char * dir_path, dev_t source_dev) {
             closedir(dir);
             continue;
         }
-        
+
         struct dirent * dirent;
         struct stat sb;
         rewinddir(dir);
@@ -191,7 +199,7 @@ int get_entry_from_dir(entry * entry, char * dir_path, dev_t source_dev) {
             if (fstatat(dir_fd, dirent->d_name, &sb, AT_SYMLINK_NOFOLLOW) == -1) continue;
             if (opt_one_dev && sb.st_dev != source_dev) continue;
             entry->size += sb.st_size;
-            
+
             if (S_ISDIR(sb.st_mode)) {
                 size_t path_len = strlen(curr_dir_path) + 1 + strlen(dirent->d_name) + 1;
                 char * new_path = malloc(path_len);
@@ -212,6 +220,10 @@ int get_entry_from_dir(entry * entry, char * dir_path, dev_t source_dev) {
 err:
     if (stack) free_stack(&stack);
     if (dir) closedir(dir);
+    if (retval != 0 && entry->name) {
+        free(entry->name);
+        entry->name = NULL;
+    }
     return retval;
 }
 
@@ -224,6 +236,15 @@ int cmp_entries(const void * a , const void * b) {
     if (size_b > size_a) return 1;
     if (size_b < size_a) return -1;
     return 0;
+}
+
+void free_entries(entry * entries, size_t entries_count) {
+    if (!entries) return;
+    for (size_t i = 0; i < entries_count; i++) {
+        if (entries[i].name) {
+            free(entries[i].name);
+        }
+    }
 }
 
 /*
@@ -249,14 +270,14 @@ void print_bar(size_t actual_size, size_t max_size, size_t bar_width) {
     if (max_size > 0) {
         hash_count = (size_t)(((double)actual_size / max_size) * (bar_width - 2));
     }
-    
+
     if (hash_count > bar_width - 2) hash_count = bar_width - 2;
 
     memset(bar + 1, '#', hash_count);
-    bar[0] = '['; 
-    bar[bar_width - 1] = ']'; 
+    bar[0] = '[';
+    bar[bar_width - 1] = ']';
     bar[bar_width] = '\0';
-    
+
     printf("%s", bar);
     free(bar);
 }
@@ -295,6 +316,7 @@ int main(int argc, char * argv[]) {
     char * target_dir = "."; // default dir is cwd
     DIR * dir = NULL;
     entry * entries = NULL;
+    size_t n_entry = 0; // this has to be defined before the first `goto err`
 
     int opt;  // love getopt <3
     while ((opt = getopt(argc, argv, "n:w:sxidfhV")) != -1) {
@@ -348,19 +370,19 @@ int main(int argc, char * argv[]) {
             case 'h':
             case '?':
             default: // help
-                fprintf(stderr, "Usage: %s [-n count] [-w barwidth] [-isx] [-d | -f] [directory]\n", argv[0]);
-                fprintf(stderr, "Options:\n");
-                fprintf(stderr, "  -n count     Number of entries to show (0 for all, default: 10)\n");
-                fprintf(stderr, "  -w barwidth  Width of the bar graph excluding [] brackets (default: 32)\n");
-                fprintf(stderr, "  -s           Silent mode (suppress errors)\n");
-                fprintf(stderr, "  -x           Stay on one file system (ignore /proc, /sys, USBs, etc.)\n");
-                fprintf(stderr, "  -i           Ignore hidden files/directories\n");
-                fprintf(stderr, "  -d           Show only directories (exclusive with -f)\n");
-                fprintf(stderr, "  -f           Show only files (exclusive with -d)\n");
-                fprintf(stderr, "  -V           Show version information and exit\n");
-                fprintf(stderr, "  -h           Show this very helpful message\n");
-                fprintf(stderr, "\nDefault directory is current working directory.\n");
-                goto err;
+            fprintf(stderr, "Usage: %s [-n count] [-w barwidth] [-isx] [-d | -f] [directory]\n", argv[0]);
+            fprintf(stderr, "Options:\n");
+            fprintf(stderr, "  -n count     Number of entries to show (0 for all, default: 10)\n");
+            fprintf(stderr, "  -w barwidth  Width of the bar graph excluding [] brackets (default: 32)\n");
+            fprintf(stderr, "  -s           Silent mode (suppress errors)\n");
+            fprintf(stderr, "  -x           Stay on one file system (ignore /proc, /sys, USBs, etc.)\n");
+            fprintf(stderr, "  -i           Ignore hidden files/directories\n");
+            fprintf(stderr, "  -d           Show only directories (exclusive with -f)\n");
+            fprintf(stderr, "  -f           Show only files (exclusive with -d)\n");
+            fprintf(stderr, "  -V           Show version information and exit\n");
+            fprintf(stderr, "  -h           Show this very helpful message\n");
+            fprintf(stderr, "\nDefault directory is current working directory.\n");
+            goto err;
         }
     }
 
@@ -387,7 +409,7 @@ int main(int argc, char * argv[]) {
         print_error("memory allocation failed: %s\n", strerror(errno));
         goto err;
     }
-    
+
     dir = opendir(".");
     if (!dir) {
         print_error("cannot open target directory: %s\n", strerror(errno));
@@ -408,7 +430,6 @@ int main(int argc, char * argv[]) {
 
     size_t total_entries = 0;
     size_t others_size = 0;
-    size_t n_entry = 0;
 
     rewinddir(dir);
     while ((dirent = readdir(dir))) {
@@ -416,24 +437,34 @@ int main(int argc, char * argv[]) {
         if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) continue;
         if (fstatat(dir_fd, dirent->d_name, &sb, AT_SYMLINK_NOFOLLOW) == -1) continue;
         if (opt_one_dev && sb.st_dev != source_dev) continue;
-        entry curr_entry = { 0 };
+        entry curr_entry = { .size = 0, .name = NULL};
         if (S_ISDIR(sb.st_mode) && !opt_only_files) {
             if (get_entry_from_dir(&curr_entry, dirent->d_name, source_dev)) {
                 print_error("failed to traverse directory '%s'\n", dirent->d_name);
                 continue;
             }
         } else if (S_ISREG(sb.st_mode) && !opt_only_dirs) {
-            strcpy(curr_entry.name, dirent->d_name);
+            curr_entry.name = strdup(dirent->d_name);
+            if (!curr_entry.name) {
+                print_error("memory allocation failed: %s\n", strerror(errno));
+                goto err;
+            }
             curr_entry.size = sb.st_size;
         }
         if (curr_entry.size > 0) {
             if (n_entry + 1 == entries_size) {
                 entry * new_entries = realloc(entries, entries_size * 2 * sizeof(entry));
-                if (!new_entries) goto err;
+                if (!new_entries) {
+                    free(curr_entry.name);
+                    goto err;
+                };
                 entries = new_entries;
                 entries_size *= 2;
             }
             entries[n_entry++] = curr_entry;
+        } else {
+            // if size is 0, deallocation of potentially allocated name needed
+            if (curr_entry.name) free(curr_entry.name);
         }
         total_entries++;
     }
@@ -444,7 +475,7 @@ int main(int argc, char * argv[]) {
     for (size_t i = to_print; i < n_entry; i++) {
         others_size += entries[i].size;
     }
-    size_t max_val = entries[0].size; 
+    size_t max_val = entries[0].size;
     if (others_size > max_val) {
         max_val = others_size;
     }
@@ -462,7 +493,7 @@ int main(int argc, char * argv[]) {
     if (others_size > 0) {
         char size_str[32];
         format_size(others_size, size_str);
-        
+
         printf("%12s ", size_str);
         print_bar(others_size, max_val, bar_width);
         printf(" ...and %lu others.\n", n_entry - to_print);
@@ -478,6 +509,7 @@ int main(int argc, char * argv[]) {
     retval = 0;
 err:
     if (dir) closedir(dir);
+    if (entries) free_entries(entries, n_entry);
     if (entries) free(entries);
     return retval;
 }
