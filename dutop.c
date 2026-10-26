@@ -60,7 +60,7 @@ typedef struct {
 */
 void print_error(const char * format, ...) {
     if (opt_silent) return;
-    fprintf(stderr, "treemap: ");
+    fprintf(stderr, "dutop: ");
 
     va_list args;
     va_start(args, format);
