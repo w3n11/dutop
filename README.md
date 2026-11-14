@@ -61,9 +61,9 @@ Default directory is current working directory.
 
 ### Examples
 
-* Find the top 5 largest directories in the current folder: `dutop -n 5`
+* Find the top 5 largest files or directories in the current folder: `dutop -n 5`
 * Scan the entire root drive silently, ignoring virtual file systems (like `/proc`) and external drives: `sudo dutop -sx /`
-* Show a detailed, wide graph (60 chars) of all items in `/var/log`: `dutop -n 0 -w 60 /var/log`
+* Show a detailed, wide graph (60 chars) of all files in `/var/log`: `dutop -n 0 -w 60 -f /var/log`
 
 ## Installation
 
