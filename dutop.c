@@ -455,7 +455,7 @@ int main(int argc, char * argv[]) {
     }
     dev_t source_dev = target_sb.st_dev; // filesystem id
 
-    size_t total_entries = 0;
+    // size_t total_entries = 0;
     size_t others_size = 0;
 
     rewinddir(dir);
@@ -493,7 +493,7 @@ int main(int argc, char * argv[]) {
             // if size is 0, deallocation of potentially allocated name needed
             if (curr_entry.name) free(curr_entry.name);
         }
-        total_entries++;
+        // total_entries++;
     }
     qsort(entries, n_entry, sizeof(entry), cmp_entries);
 
